@@ -5,14 +5,16 @@ import scala.languageFeature.implicitConversions
 import scala.languageFeature.existentials
 import Stream.Empty
 
+import Thrist.{PThrist, PNil, PCons}
+
 object Fused {
 
   implicit class Fusable[A](list: Stream[A]) {
     def mapFused[B](f: A => B): Fuser[A, B] =
-      new Fuser[A, B](Cons(Fused.mapFused[A, B](f), Nil[Op, A, A]), toCoLazyList(list))
+      new Fuser[A, B](PCons(Fused.mapFused[A, B](f), PNil[Op, A, A]), toCoLazyList(list))
 
     def filterFused(f: A => Boolean): Fuser[A, A] =
-      new Fuser[A, A](Cons(Fused.filterFused[A](f), Nil[Op, A, A]), toCoLazyList(list))
+      new Fuser[A, A](PCons(Fused.filterFused[A](f), PNil[Op, A, A]), toCoLazyList(list))
   }
 
   implicit def unStream[A, B](fuser: Fuser[A, B]): Stream[B] = fuser.toStream
@@ -20,9 +22,9 @@ object Fused {
 
   def mapFused[A, B](f: A => B): Op[A, B] =
     cll =>
-      CoLazyList[B](
+      mkCoLazyList[B, Stream[B]](
         cll.state,
-        (s: S forSome { type S }) => cll.next(s) match {
+        s => cll.next(s) match {
           case Done()          => Done()
           case Skip(sNext)     => Skip(sNext)
           case Yield(a, sNext) => Yield(f(a), sNext)
@@ -31,33 +33,42 @@ object Fused {
 
   def filterFused[A](f: A => Boolean): Op[A, A] =
     cll =>
-      CoLazyList[A](
-        cll.state,
-        s => cll.next(s) match {
-          case done@Done()              => done
-          case skip@Skip(_)             => skip
+      mkCoLazyList[A, cll.S](
+        s0 => cll.next(s0) match {
+          case Done()                   => Done()
+          case Skip(s)                  => Skip(s)
           case Yield(a, sNext) if !f(a) => Skip(sNext)
-          case yieldas@Yield(_, _)      => yieldas
-        }
-      )
+          case Yield(a, s)              => Yield(a, s)
+        },
+        cll.state
+      ): CoLazyList[A] {type S = cll.S}
 
   private[Fusion] sealed trait Step[A, S]
   private[Fusion] case class Done[A, S]() extends Step[A, S]
   private[Fusion] case class Skip[A, S](s: S) extends Step[A, S]
   private[Fusion] case class Yield[A, S](a: A, s: S) extends Step[A, S]
 
-  private[Fusion] case class CoLazyList[A](all: (S, S => Step[A, S]) forSome { type S }) {
-    val state = all._1
-    val next = all._2
+
+  private[Fusion] sealed abstract class CoLazyList[A] { self =>
+    type S
+    val next: S => Step[A, S]
+    val state: S
   }
 
+  def mkCoLazyList[A, S0](next: S0 => Step[A, S0], state: S0): CoLazyList[A] {type S = S0} =
+    new CoLazyList[A] {
+      type S = S0
+      override val next = next
+      override val state = state
+    }
+
   private[Fusion] def toCoLazyList[A](list: Stream[A]): CoLazyList[A] =
-    CoLazyList(
-      (list,
-        (in: Stream[A]) => {
-          case Empty    => Done()
-          case x #:: xs => Yield(x, xs)
-        })
+    mkCoLazyList(
+      (in => {
+        case Empty    => Done()
+        case x #:: xs => Yield(x, xs)
+      },
+      list)
     )
 
   private[Fusion] def toLazyList[A](co: CoLazyList[A]): Stream[A] = {
@@ -71,51 +82,23 @@ object Fused {
   }
 
   type Op[A, B] = CoLazyList[A] => CoLazyList[B]
-  type Ops[A, B] = Thrist[Op, A, B]
+  type Ops[A, B] = PThrist[Op, A, B]
 
   // emulates GHC rewrite rules which are unavailable in Scalac
   private[Fusion] case class Fuser[A, B] (ops: Ops[A, B], state: CoLazyList[A]) {
     private[Fusion] def toStream: Stream[B] =
-      Thrist.compose[Op, A, B](_ => state, (a: Op[_, A], b: Op[A, _]) => b compose a, ops)(state)
+      PThrist.compose[Op, A, B](_ => state, (a: Op[_, A], b: Op[A, _]) => b compose a, ops)(state)
 
     private[Fusion] def prepend[C](op: Op[B, C]): Fuser[A, C] =
-      new Fuser[A, C](Cons[Op, A, B, C](op, ops), state)
+      new Fuser[A, C](PCons[Op, A, B, C](op, ops), state)
 
     // user-visible functions //
 
     def mapFused[C](f: B => C): Fuser[A, C] =
-      Fuser(Cons[Op, A, B, C](Fused.mapFused(f), ops), state)
+      Fuser(PCons[Op, A, B, C](Fused.mapFused(f), ops), state)
 
     def filterFused(f: A => Boolean): Fuser[A, B] =
-      Fuser(Cons[Op, A, B, B](Fused.filterFused(f), ops), state)
+      Fuser(PCons[Op, A, B, B](Fused.filterFused(f), ops), state)
   }
 
-}
-
-//Thrist of functions
-//sealed trait Thrist[A,B]
-//case class Nil[A,B](implicit proof: A =:= B) extends Thrist[A,B]
-//case class Cons[A,B,C](head: A => B, tail: Thrist[B,C]) extends Thrist[A,C]
-
-
-//Polymorphic Thrist (diagramatic order)
-//sealed trait Thrist[Arr[_, _], A, B]
-//case class Nil[Arr[_, _], A, B](implicit proof: A =:= B) extends Thrist[Arr, A, B]
-//case class Cons[Arr[_, _], A, B, C](head: Arr[A, B], tail: Thrist[Arr, B, C]) extends Thrist[Arr, A, C]
-
-//Polymorphic Thrist
-sealed trait Thrist[Arr[_, _], A, B]
-case class Nil[Arr[_, _], A, B](implicit proof: A =:= B) extends Thrist[Arr, A, B]
-case class Cons[Arr[_, _], A, B, C](head: Arr[B, C], tail: Thrist[Arr, A, B]) extends Thrist[Arr, A, C]
-
-//Kind-polymorphic Thrist
-//sealed trait Thrist[Arr[_[_],_[_]], A[_], B[_]]
-//case class Nil[Arr[_[_],_[_]], A[_], B[_]](implicit proof: A =:= B) extends Thrist[Arr, A, B]
-//case class Cons[Arr[_[_],_[_]], A[_], B[_], C[_]](head: Arr[A, B], tail: Thrist[Arr, B, C]) extends Thrist[Arr, A, C]
-
-object Thrist {
-  def compose[Arr[_, _], A, B](z: Arr[A, B], build:((Arr[C, D], Arr[D,E]) => Arr[C, E]) forSome { type C; type D; type E}, thrist: Thrist[Arr, A, B]): Arr[A, B] = thrist match {
-    case Nil(_)           => z
-    case Cons(head, tail) => build(head, compose(z, build, tail))
-  }
 }
