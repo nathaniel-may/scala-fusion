@@ -21,27 +21,25 @@ object Fused {
   implicit def unStream[A](fuser: Fuser[A, A]): Stream[A] = fuser.toStream
 
   def mapFused[A, B](f: A => B): Op[A, B] =
-    cll =>
-      mkCoLazyList[B, Stream[B]](
-        cll.state,
-        s => cll.next(s) match {
-          case Done()          => Done()
-          case Skip(sNext)     => Skip(sNext)
-          case Yield(a, sNext) => Yield(f(a), sNext)
-        }
-      )
+    cll => mkCoLazyList[B, cll.S](
+      s => cll.next(s) match {
+        case Done()          => Done()
+        case Skip(sNext)     => Skip(sNext)
+        case Yield(a, sNext) => Yield(f(a), sNext)
+      },
+      cll.state
+    )
 
   def filterFused[A](f: A => Boolean): Op[A, A] =
-    cll =>
-      mkCoLazyList[A, cll.S](
-        s0 => cll.next(s0) match {
-          case Done()                   => Done()
-          case Skip(s)                  => Skip(s)
-          case Yield(a, sNext) if !f(a) => Skip(sNext)
-          case Yield(a, s)              => Yield(a, s)
-        },
-        cll.state
-      ): CoLazyList[A] {type S = cll.S}
+    cll => mkCoLazyList[A, cll.S](
+      s => cll.next(s) match {
+        case Done()                   => Done()
+        case Skip(sNext)              => Skip(sNext)
+        case Yield(a, sNext) if !f(a) => Skip(sNext)
+        case Yield(a, sNext)          => Yield(a, sNext)
+      },
+      cll.state
+    )
 
   private[Fusion] sealed trait Step[A, S]
   private[Fusion] case class Done[A, S]() extends Step[A, S]
@@ -49,7 +47,7 @@ object Fused {
   private[Fusion] case class Yield[A, S](a: A, s: S) extends Step[A, S]
 
 
-  private[Fusion] sealed abstract class CoLazyList[A] { self =>
+  private[Fusion] sealed trait CoLazyList[A] {
     type S
     val next: S => Step[A, S]
     val state: S
@@ -63,12 +61,12 @@ object Fused {
     }
 
   private[Fusion] def toCoLazyList[A](list: Stream[A]): CoLazyList[A] =
-    mkCoLazyList(
-      (in => {
+    mkCoLazyList[A, _](
+      {
         case Empty    => Done()
         case x #:: xs => Yield(x, xs)
       },
-      list)
+      list
     )
 
   private[Fusion] def toLazyList[A](co: CoLazyList[A]): Stream[A] = {
