@@ -1,11 +1,9 @@
 package Fusion
 
-import scala.language.implicitConversions
-
 import org.scalacheck.Properties
 import org.scalacheck.Prop.forAll
 import Fused._
-import Fused.Fusable
+
 
 object FusionProperties extends Properties("Fusion"){
 
