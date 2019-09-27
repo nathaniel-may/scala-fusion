@@ -1,7 +1,8 @@
 package Fusion
 
-import org.scalacheck.Properties
+import org.scalacheck.{Properties, Arbitrary}
 import org.scalacheck.Prop.forAll
+import Generators.genFusion
 import Fused._
 
 
@@ -46,30 +47,20 @@ object FusionProperties extends Properties("Fusion"){
       else fusionEffects == noFusionEffects
   }
 
-  property("fusing map then take is never worse than using native LazyList optimizations") = forAll {
-    (lazyList: LazyList[Int], n: Int)  =>
-      var noFusionEffects = 0
-      var fusionEffects = 0
+  property("an arbitrary fusion is never worse than using SeqView or native LazyList optimizations") =
+    forAll(genFusion, implicitly[Arbitrary[Int]].arbitrary) {
+      (lazyList: LazyList[Int], n: Int)  =>
+        var lazyListEffects = 0
+        var seqViewEffects = 0
+        var fusionEffects = 0
 
-      // mutations to simulate effects
-      // comparing with list effects because lazylist has its own optimizations
-      lazyList.map(_ => noFusionEffects += 1).take(n).toList
-      lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
+        // mutations to simulate effects
+        lazyList.map(_ => lazyListEffects += 1).take(n).toList
+        lazyList.view.map(_ => seqViewEffects += 1).take(n).toList
+        lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
 
-      fusionEffects <= noFusionEffects
-  }
-
-  property("fusing map then take is never worse than using SeqView optimizations") = forAll {
-    (lazyList: LazyList[Int], n: Int)  =>
-      var noFusionEffects = 0
-      var fusionEffects = 0
-
-      // mutations to simulate effects
-      // comparing with list effects because lazylist has its own optimizations
-      lazyList.view.map(_ => noFusionEffects += 1).take(n).toList
-      lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
-
-      fusionEffects <= noFusionEffects
-  }
+        List(lazyListEffects, seqViewEffects)
+          .forall(fusionEffects <= _)
+    }
 
 }
