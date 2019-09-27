@@ -6,14 +6,11 @@ object Fused {
 
   // TODO just go straight to fuser
   implicit class Fusable[A](list: LazyList[A]) {
-    def mapFused[B](f: A => B): Fuser[A, B] =
-      new Fuser[A, B](PCons(Fused.mapFused[A, B](f), PNil[Op, A]()), toCoLazyList(list))
-
-    def filterFused(f: A => Boolean): Fuser[A, A] =
-      new Fuser[A, A](PCons(Fused.filterFused[A](f), PNil[Op, A]()), toCoLazyList(list))
+    def startFusion: Fuser[A, A] =
+      new Fuser[A, A](PNil[Op, A](), toCoLazyList(list))
   }
 
-  def mapFused[A, B](f: A => B): Op[A, B] =
+  def map[A, B](f: A => B): Op[A, B] =
     cll => mkCoLazyList[B, cll.S](
       s => cll.next(s) match {
         case Done()          => Done()
@@ -23,7 +20,7 @@ object Fused {
       cll.state
     )
 
-  def filterFused[A](f: A => Boolean): Op[A, A] =
+  def filter[A](f: A => Boolean): Op[A, A] =
     cll => mkCoLazyList[A, cll.S](
       s => cll.next(s) match {
         case Done()                   => Done()
@@ -88,11 +85,11 @@ object Fused {
 
     // user-visible functions //
 
-    def mapFused[C](f: B => C): Fuser[A, C] =
-      Fuser(PCons[Op, A, B, C](Fused.mapFused(f), ops), state)
+    def map[C](f: B => C): Fuser[A, C] =
+      Fuser(PCons[Op, A, B, C](Fused.map(f), ops), state)
 
-    def filterFused(f: B => Boolean): Fuser[A, B] =
-      Fuser(PCons[Op, A, B, B](Fused.filterFused(f), ops), state)
+    def filter(f: B => Boolean): Fuser[A, B] =
+      Fuser(PCons[Op, A, B, B](Fused.filter(f), ops), state)
   }
 
 }
