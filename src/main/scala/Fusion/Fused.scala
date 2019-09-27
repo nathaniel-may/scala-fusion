@@ -2,20 +2,18 @@ package Fusion
 
 import Stream.Empty
 
-import Thrist.{PThrist, PNil, PCons}
+import Thrist.{PThrist, PNil, PCons, Category}
 
 object Fused {
 
+  // TODO just go straight to fuser
   implicit class Fusable[A](list: Stream[A]) {
     def mapFused[B](f: A => B): Fuser[A, B] =
-      new Fuser[A, B](PCons(Fused.mapFused[A, B](f), PNil[Op, A, A]), toCoLazyList(list))
+      new Fuser[A, B](PCons(Fused.mapFused[A, B](f), PNil[Op, A]()), toCoLazyList(list))
 
     def filterFused(f: A => Boolean): Fuser[A, A] =
-      new Fuser[A, A](PCons(Fused.filterFused[A](f), PNil[Op, A, A]), toCoLazyList(list))
+      new Fuser[A, A](PCons(Fused.filterFused[A](f), PNil[Op, A]()), toCoLazyList(list))
   }
-
-  implicit def unStream[A, B](fuser: Fuser[A, B]): Stream[B] = fuser.toStream
-  implicit def unStream[A](fuser: Fuser[A, A]): Stream[A] = fuser.toStream
 
   def mapFused[A, B](f: A => B): Op[A, B] =
     cll => mkCoLazyList[B, cll.S](
@@ -50,15 +48,15 @@ object Fused {
     val state: S
   }
 
-  def mkCoLazyList[A, S0](next: S0 => Step[A, S0], state: S0): CoLazyList[A] {type S = S0} =
+  def mkCoLazyList[A, S0](n: S0 => Step[A, S0], s: S0): CoLazyList[A] {type S = S0} =
     new CoLazyList[A] {
       type S = S0
-      override val next = next
-      override val state = state
+      override val next = n
+      override val state = s
     }
 
   private[Fusion] def toCoLazyList[A](list: Stream[A]): CoLazyList[A] =
-    mkCoLazyList[A, _](
+    mkCoLazyList[A, Stream[A]](
       {
         case Empty    => Done()
         case x #:: xs => Yield(x, xs)
@@ -77,14 +75,17 @@ object Fused {
   }
 
   type Op[A, B] = CoLazyList[A] => CoLazyList[B]
+  implicit val opCategory: Category[Op] = new Category[Op]{
+    override def id[A]: Op[A, A] = identity
+    override def compose[A, B, C](a: Op[A, B], b: Op[B, C]): Op[A, C] = b compose a
+  }
 
   // emulates GHC rewrite rules which are unavailable in Scalac
   private[Fusion] case class Fuser[A, B] (ops: PThrist[Op, A, B], state: CoLazyList[A]) {
-    private[Fusion] def toStream: Stream[B] = ops match {
-      case PNil(proof) => toLazyList(state)
-      case PCons(h, t) => toLazyList(h(state))
-    }
-      //PThrist.compose[Op, A, B](_ => state, (a: Op[_, A], b: Op[A, _]) => b compose a, ops)(state)
+    def toStream: Stream[B] =
+      toLazyList(PThrist.compose[Op, A, B](ops)(opCategory)(state))
+
+    def fuse: Stream[B] = toStream
 
     private[Fusion] def prepend[C](op: Op[B, C]): Fuser[A, C] =
       new Fuser[A, C](PCons[Op, A, B, C](op, ops), state)
@@ -94,7 +95,7 @@ object Fused {
     def mapFused[C](f: B => C): Fuser[A, C] =
       Fuser(PCons[Op, A, B, C](Fused.mapFused(f), ops), state)
 
-    def filterFused(f: A => Boolean): Fuser[A, B] =
+    def filterFused(f: B => Boolean): Fuser[A, B] =
       Fuser(PCons[Op, A, B, B](Fused.filterFused(f), ops), state)
   }
 
