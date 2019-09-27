@@ -75,7 +75,7 @@ object Fused {
   type Op[A, B] = CoLazyList[A] => CoLazyList[B]
   implicit val opCategory: Category[Op] = new Category[Op]{
     override def id[A]: Op[A, A] = identity
-    override def compose[A, B, C](a: Op[A, B], b: Op[B, C]): Op[A, C] = b compose a
+    override def compose[A, B, C](f: Op[B, C], g: Op[A, B]): Op[A, C] = f compose g
   }
 
   // emulates GHC rewrite rules which are unavailable in Scalac
