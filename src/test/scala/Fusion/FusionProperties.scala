@@ -32,4 +32,18 @@ object FusionProperties extends Properties("Fusion"){
       lazyList.take(n) == lazyList.startFusion.take(n).fuse
   }
 
+  property("fusing take at the end reduces the number of computations") = forAll {
+    (lazyList: LazyList[Int], n: Int)  =>
+      var noFusionEffects = 0
+      var fusionEffects = 0
+
+      // mutations to simulate effects
+      // comparing with list effects because lazylist has its own optimizations
+      lazyList.toList.map(_ => noFusionEffects += 1).take(n)
+      lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
+
+      if(lazyList.drop(n).nonEmpty) fusionEffects < noFusionEffects
+      else fusionEffects == noFusionEffects
+  }
+
 }
