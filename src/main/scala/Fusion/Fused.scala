@@ -1,8 +1,5 @@
 package Fusion
 
-import scala.languageFeature.higherKinds
-import scala.languageFeature.implicitConversions
-import scala.languageFeature.existentials
 import Stream.Empty
 
 import Thrist.{PThrist, PNil, PCons}
@@ -70,22 +67,24 @@ object Fused {
     )
 
   private[Fusion] def toLazyList[A](co: CoLazyList[A]): Stream[A] = {
-    def go(all: (S, S => Step[A, S]) forSome { type S }): Stream[A] = all._2(all._1) match {
+    def go(s: co.S, n: co.S => Step[A, co.S]): Stream[A] = n(s) match {
       case Done()          => Stream.empty
-      case Skip(sNext)     => go(sNext, all._2)
-      case Yield(a, sNext) => a #:: go(sNext, all._2)
+      case Skip(sNext)     => go(sNext, n)
+      case Yield(a, sNext) => a #:: go(sNext, n)
     }
 
     go(co.state, co.next)
   }
 
   type Op[A, B] = CoLazyList[A] => CoLazyList[B]
-  type Ops[A, B] = PThrist[Op, A, B]
 
   // emulates GHC rewrite rules which are unavailable in Scalac
-  private[Fusion] case class Fuser[A, B] (ops: Ops[A, B], state: CoLazyList[A]) {
-    private[Fusion] def toStream: Stream[B] =
-      PThrist.compose[Op, A, B](_ => state, (a: Op[_, A], b: Op[A, _]) => b compose a, ops)(state)
+  private[Fusion] case class Fuser[A, B] (ops: PThrist[Op, A, B], state: CoLazyList[A]) {
+    private[Fusion] def toStream: Stream[B] = ops match {
+      case PNil(proof) => toLazyList(state)
+      case PCons(h, t) => toLazyList(h(state))
+    }
+      //PThrist.compose[Op, A, B](_ => state, (a: Op[_, A], b: Op[A, _]) => b compose a, ops)(state)
 
     private[Fusion] def prepend[C](op: Op[B, C]): Fuser[A, C] =
       new Fuser[A, C](PCons[Op, A, B, C](op, ops), state)
