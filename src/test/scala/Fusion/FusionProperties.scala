@@ -59,4 +59,17 @@ object FusionProperties extends Properties("Fusion"){
       fusionEffects <= noFusionEffects
   }
 
+  property("fusing map then take is never worse than using SeqView optimizations") = forAll {
+    (lazyList: LazyList[Int], n: Int)  =>
+      var noFusionEffects = 0
+      var fusionEffects = 0
+
+      // mutations to simulate effects
+      // comparing with list effects because lazylist has its own optimizations
+      lazyList.view.map(_ => noFusionEffects += 1).take(n).toList
+      lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
+
+      fusionEffects <= noFusionEffects
+  }
+
 }
