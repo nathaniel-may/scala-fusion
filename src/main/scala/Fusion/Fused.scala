@@ -4,7 +4,6 @@ import Thrist.{PThrist, PNil, PCons, Category}
 
 object Fused {
 
-  // TODO just go straight to fuser
   implicit class Fusable[A](list: LazyList[A]) {
     def startFusion: Fuser[A, A] =
       new Fuser[A, A](PNil[Op, A](), toCoLazyList(list))
@@ -29,6 +28,20 @@ object Fused {
         case Yield(a, sNext)          => Yield(a, sNext)
       },
       cll.state
+    )
+
+  def take[A](n: Int): Op[A, A] =
+    cll => mkCoLazyList[A, (Int, cll.S)](
+      s => {
+        val (n0, s0) = s
+        if (n0 <= 0) Done()
+        else cll.next(s0) match {
+          case Done() => Done()
+          case Skip(sNext) => Skip((n0, sNext))
+          case Yield(a, sNext) => Yield(a, (n - 1, sNext))
+        }
+      },
+      (n, cll.state)
     )
 
   private[Fusion] sealed trait Step[A, S]
@@ -90,6 +103,9 @@ object Fused {
 
     def filter(f: B => Boolean): Fuser[A, B] =
       Fuser(PCons[Op, A, B, B](Fused.filter(f), ops), state)
+
+    def take(n: Int): Fuser[A, B] =
+      Fuser(PCons[Op, A, B, B](Fused.take(n), ops), state)
   }
 
 }
