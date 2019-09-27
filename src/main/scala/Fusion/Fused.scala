@@ -1,13 +1,11 @@
 package Fusion
 
-import Stream.Empty
-
 import Thrist.{PThrist, PNil, PCons, Category}
 
 object Fused {
 
   // TODO just go straight to fuser
-  implicit class Fusable[A](list: Stream[A]) {
+  implicit class Fusable[A](list: LazyList[A]) {
     def mapFused[B](f: A => B): Fuser[A, B] =
       new Fuser[A, B](PCons(Fused.mapFused[A, B](f), PNil[Op, A]()), toCoLazyList(list))
 
@@ -55,18 +53,18 @@ object Fused {
       override val state = s
     }
 
-  private[Fusion] def toCoLazyList[A](list: Stream[A]): CoLazyList[A] =
-    mkCoLazyList[A, Stream[A]](
+  private[Fusion] def toCoLazyList[A](list: LazyList[A]): CoLazyList[A] =
+    mkCoLazyList[A, LazyList[A]](
       {
-        case Empty    => Done()
-        case x #:: xs => Yield(x, xs)
+        case LazyList() => Done()
+        case x #:: xs   => Yield(x, xs)
       },
       list
     )
 
-  private[Fusion] def toLazyList[A](co: CoLazyList[A]): Stream[A] = {
-    def go(s: co.S, n: co.S => Step[A, co.S]): Stream[A] = n(s) match {
-      case Done()          => Stream.empty
+  private[Fusion] def toLazyList[A](co: CoLazyList[A]): LazyList[A] = {
+    def go(s: co.S, n: co.S => Step[A, co.S]): LazyList[A] = n(s) match {
+      case Done()          => LazyList.empty
       case Skip(sNext)     => go(sNext, n)
       case Yield(a, sNext) => a #:: go(sNext, n)
     }
@@ -82,7 +80,7 @@ object Fused {
 
   // emulates GHC rewrite rules which are unavailable in Scalac
   private[Fusion] case class Fuser[A, B] (ops: PThrist[Op, A, B], state: CoLazyList[A]) {
-    def fuse: Stream[B] =
+    def fuse: LazyList[B] =
       toLazyList(PThrist.compose[Op, A, B](ops)(opCategory)(state))
 
     private[Fusion] def prepend[C](op: Op[B, C]): Fuser[A, C] =
