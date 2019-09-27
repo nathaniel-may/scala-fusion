@@ -82,10 +82,8 @@ object Fused {
 
   // emulates GHC rewrite rules which are unavailable in Scalac
   private[Fusion] case class Fuser[A, B] (ops: PThrist[Op, A, B], state: CoLazyList[A]) {
-    def toStream: Stream[B] =
+    def fuse: Stream[B] =
       toLazyList(PThrist.compose[Op, A, B](ops)(opCategory)(state))
-
-    def fuse: Stream[B] = toStream
 
     private[Fusion] def prepend[C](op: Op[B, C]): Fuser[A, C] =
       new Fuser[A, C](PCons[Op, A, B, C](op, ops), state)

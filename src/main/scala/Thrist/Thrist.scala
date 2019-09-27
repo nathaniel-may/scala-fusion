@@ -1,8 +1,6 @@
 package Thrist
 
-import scala.language.higherKinds
-import scala.language.implicitConversions
-import scala.language.existentials
+import scala.language.{implicitConversions, existentials}
 
 //Thrist of functions
 sealed trait FThrist[A,B]
@@ -29,7 +27,7 @@ trait Category[Hom[_, _]] {
 object PThrist {
 
   def compose[Arr[_, _], A, B](thrist: PThrist[Arr, A, B])(implicit cat: Category[Arr]): Arr[A, B] = thrist match {
-    case PNil()            => cat.id.asInstanceOf[Arr[A, B]] // TODO better way to do this?
+    case _: PNil[_, a]     => cat.id[a] // TODO better way to do this?
     case PCons(head, tail) => cat.compose(compose(tail), head)
   }
 
