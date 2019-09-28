@@ -57,11 +57,6 @@ object Fused {
     def fuse: LazyList[B] =
       unstream(Thrist.compose[Op, A, B](ops)(opCategory)(state))
 
-    private[Fusion] def prepend[C](op: Op[B, C]): Fuser[A, C] =
-      new Fuser[A, C](Cons[Op, A, B, C](op, ops), state)
-
-    // user-visible functions //
-
     def map[C](f: B => C): Fuser[A, C] = {
       val map: Op[B, C] =
         cll => mkStream[C, cll.S](
