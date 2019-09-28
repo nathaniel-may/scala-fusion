@@ -1,12 +1,12 @@
 package Fusion
 
-import Thrist.{PThrist, PNil, PCons, Category}
+import Thrist.{Thrist, Nil, Cons, Category}
 
 object Fused {
 
   implicit class Fusable[A](list: LazyList[A]) {
     def startFusion: Fuser[A, A] =
-      new Fuser[A, A](PNil[Op, A](), toCoLazyList(list))
+      new Fuser[A, A](Nil[Op, A](), toCoLazyList(list))
   }
 
   def map[A, B](f: A => B): Op[A, B] =
@@ -89,23 +89,23 @@ object Fused {
   }
 
   // emulates GHC rewrite rules which are unavailable in Scalac
-  private[Fusion] case class Fuser[A, B] (ops: PThrist[Op, A, B], state: CoLazyList[A]) {
+  private[Fusion] case class Fuser[A, B] (ops: Thrist[Op, A, B], state: CoLazyList[A]) {
     def fuse: LazyList[B] =
-      toLazyList(PThrist.compose[Op, A, B](ops)(opCategory)(state))
+      toLazyList(Thrist.compose[Op, A, B](ops)(opCategory)(state))
 
     private[Fusion] def prepend[C](op: Op[B, C]): Fuser[A, C] =
-      new Fuser[A, C](PCons[Op, A, B, C](op, ops), state)
+      new Fuser[A, C](Cons[Op, A, B, C](op, ops), state)
 
     // user-visible functions //
 
     def map[C](f: B => C): Fuser[A, C] =
-      Fuser(PCons[Op, A, B, C](Fused.map(f), ops), state)
+      Fuser(Cons[Op, A, B, C](Fused.map(f), ops), state)
 
     def filter(f: B => Boolean): Fuser[A, B] =
-      Fuser(PCons[Op, A, B, B](Fused.filter(f), ops), state)
+      Fuser(Cons[Op, A, B, B](Fused.filter(f), ops), state)
 
     def take(n: Int): Fuser[A, B] =
-      Fuser(PCons[Op, A, B, B](Fused.take(n), ops), state)
+      Fuser(Cons[Op, A, B, B](Fused.take(n), ops), state)
   }
 
 }
