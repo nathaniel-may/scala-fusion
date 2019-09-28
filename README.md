@@ -18,7 +18,7 @@ LazyList(0,1,2,3,4)
   .fuse
 
 // output:  LazyList(1)
-// runtime: LazyList(0,1,2,3,4) -> CoLazyList(<instruction set>) -> LazyList(1)
+// runtime: LazyList(0,1,2,3,4) -> Stream(<instruction set>) -> LazyList(1)
 ```
 
 ## Comparison
@@ -55,5 +55,5 @@ LazyList(0,1,2,3,4)
   .fuse
 
 // output:  LazyList(1)
-// runtime: LazyList(0,1,2,3,4) -> CoLazyList(<instruction set>) -> LazyList(1)
+// runtime: LazyList(0,1,2,3,4) -> Stream(<instruction set>) -> LazyList(1)
 ```
