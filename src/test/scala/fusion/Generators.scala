@@ -1,4 +1,4 @@
-package Fusion
+package fusion
 
 import org.scalacheck.{Arbitrary, Gen}, Gen.oneOf
 import Fused._

@@ -1,4 +1,4 @@
-package Thrist
+package thrist
 
 import scala.language.{implicitConversions, existentials}
 

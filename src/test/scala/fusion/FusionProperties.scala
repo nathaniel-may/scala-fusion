@@ -1,4 +1,4 @@
-package Fusion
+package fusion
 
 import org.scalacheck.{Properties, Arbitrary}
 import org.scalacheck.Prop.forAll

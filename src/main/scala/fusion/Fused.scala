@@ -1,6 +1,6 @@
-package Fusion
+package fusion
 
-import Thrist.{Thrist, Nil, Cons, Category}
+import thrist.{Thrist, Nil, Cons, Category}
 
 object Fused {
 
@@ -9,25 +9,25 @@ object Fused {
       new Fuser[A, A](Nil[Op, A](), stream(list))
   }
 
-  private[Fusion] sealed trait Step[A, S]
-  private[Fusion] case class Done[A, S]() extends Step[A, S]
-  private[Fusion] case class Skip[A, S](s: S) extends Step[A, S]
-  private[Fusion] case class Yield[A, S](a: A, s: S) extends Step[A, S]
+  private[fusion] sealed trait Step[A, S]
+  private[fusion] case class Done[A, S]() extends Step[A, S]
+  private[fusion] case class Skip[A, S](s: S) extends Step[A, S]
+  private[fusion] case class Yield[A, S](a: A, s: S) extends Step[A, S]
 
-  private[Fusion] sealed trait Stream[A] {
+  private[fusion] sealed trait Stream[A] {
     type S
     val next: S => Step[A, S]
     val state: S
   }
 
-  private[Fusion] def mkStream[A, S0](n: S0 => Step[A, S0], s: S0): Stream[A] {type S = S0} =
+  private[fusion] def mkStream[A, S0](n: S0 => Step[A, S0], s: S0): Stream[A] {type S = S0} =
     new Stream[A] {
       type S = S0
       override val next = n
       override val state = s
     }
 
-  private[Fusion] def stream[A](list: LazyList[A]): Stream[A] =
+  private[fusion] def stream[A](list: LazyList[A]): Stream[A] =
     mkStream[A, LazyList[A]](
       {
         case LazyList() => Done()
@@ -36,7 +36,7 @@ object Fused {
       list
     )
 
-  private[Fusion] def unstream[A](co: Stream[A]): LazyList[A] = {
+  private[fusion] def unstream[A](co: Stream[A]): LazyList[A] = {
     def go(s: co.S, n: co.S => Step[A, co.S]): LazyList[A] = n(s) match {
       case Done()          => LazyList.empty
       case Skip(sNext)     => go(sNext, n)
@@ -53,7 +53,7 @@ object Fused {
   }
 
   // emulates GHC rewrite rules which are unavailable in Scalac
-  private[Fusion] case class Fuser[A, B] (ops: Thrist[Op, A, B], state: Stream[A]) {
+  private[fusion] case class Fuser[A, B](ops: Thrist[Op, A, B], state: Stream[A]) {
     def fuse: LazyList[B] =
       unstream(Thrist.compose[Op, A, B](ops)(opCategory)(state))
 
