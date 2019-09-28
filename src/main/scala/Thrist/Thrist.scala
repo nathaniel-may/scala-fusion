@@ -13,10 +13,9 @@ trait Category[Hom[_, _]] {
 }
 
 object Thrist {
-
-  def compose[Arr[_, _], A, B](thrist: Thrist[Arr, A, B])(implicit cat: Category[Arr]): Arr[A, B] = thrist match {
-    case _: Nil[_, a]     => cat.id[a]
-    case Cons(head, tail) => cat.compose(head, compose(tail))
-  }
-
+  def compose[Arr[_, _], A, B](thrist: Thrist[Arr, A, B])(implicit cat: Category[Arr]): Arr[A, B] =
+    thrist match {
+      case _: Nil[_, a]     => cat.id[a]
+      case Cons(head, tail) => cat.compose(head, compose(tail))
+    }
 }
