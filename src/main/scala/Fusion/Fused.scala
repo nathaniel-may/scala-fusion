@@ -9,46 +9,10 @@ object Fused {
       new Fuser[A, A](Nil[Op, A](), toCoLazyList(list))
   }
 
-  def map[A, B](f: A => B): Op[A, B] =
-    cll => mkCoLazyList[B, cll.S](
-      s => cll.next(s) match {
-        case Done()          => Done()
-        case Skip(sNext)     => Skip(sNext)
-        case Yield(a, sNext) => Yield(f(a), sNext)
-      },
-      cll.state
-    )
-
-  def filter[A](f: A => Boolean): Op[A, A] =
-    cll => mkCoLazyList[A, cll.S](
-      s => cll.next(s) match {
-        case Done()                   => Done()
-        case Skip(sNext)              => Skip(sNext)
-        case Yield(a, sNext) if !f(a) => Skip(sNext)
-        case Yield(a, sNext)          => Yield(a, sNext)
-      },
-      cll.state
-    )
-
-  def take[A](n: Int): Op[A, A] =
-    cll => mkCoLazyList[A, (Int, cll.S)](
-      s => {
-        val (n0, s0) = s
-        if (n0 <= 0) Done()
-        else cll.next(s0) match {
-          case Done() => Done()
-          case Skip(sNext) => Skip((n0, sNext))
-          case Yield(a, sNext) => Yield(a, (n - 1, sNext))
-        }
-      },
-      (n, cll.state)
-    )
-
   private[Fusion] sealed trait Step[A, S]
   private[Fusion] case class Done[A, S]() extends Step[A, S]
   private[Fusion] case class Skip[A, S](s: S) extends Step[A, S]
   private[Fusion] case class Yield[A, S](a: A, s: S) extends Step[A, S]
-
 
   private[Fusion] sealed trait CoLazyList[A] {
     type S
@@ -56,7 +20,7 @@ object Fused {
     val state: S
   }
 
-  def mkCoLazyList[A, S0](n: S0 => Step[A, S0], s: S0): CoLazyList[A] {type S = S0} =
+  private[Fusion] def mkCoLazyList[A, S0](n: S0 => Step[A, S0], s: S0): CoLazyList[A] {type S = S0} =
     new CoLazyList[A] {
       type S = S0
       override val next = n
@@ -98,14 +62,52 @@ object Fused {
 
     // user-visible functions //
 
-    def map[C](f: B => C): Fuser[A, C] =
-      Fuser(Cons[Op, A, B, C](Fused.map(f), ops), state)
+    def map[C](f: B => C): Fuser[A, C] = {
+      val map: Op[B, C] =
+        cll => mkCoLazyList[C, cll.S](
+          s => cll.next(s) match {
+            case Done()          => Done()
+            case Skip(sNext)     => Skip(sNext)
+            case Yield(a, sNext) => Yield(f(a), sNext)
+          },
+          cll.state
+        )
 
-    def filter(f: B => Boolean): Fuser[A, B] =
-      Fuser(Cons[Op, A, B, B](Fused.filter(f), ops), state)
+      Fuser(Cons[Op, A, B, C](map, ops), state)
+    }
 
-    def take(n: Int): Fuser[A, B] =
-      Fuser(Cons[Op, A, B, B](Fused.take(n), ops), state)
+    def filter(f: B => Boolean): Fuser[A, B] = {
+      val filter: Op[B, B] =
+        cll => mkCoLazyList[B, cll.S](
+          s => cll.next(s) match {
+            case Done()                   => Done()
+            case Skip(sNext)              => Skip(sNext)
+            case Yield(a, sNext) if !f(a) => Skip(sNext)
+            case Yield(a, sNext)          => Yield(a, sNext)
+          },
+          cll.state
+        )
+
+      Fuser(Cons[Op, A, B, B](filter, ops), state)
+    }
+
+    def take(n: Int): Fuser[A, B] = {
+      val take: Op[B, B] =
+        cll => mkCoLazyList[B, (Int, cll.S)](
+          s => {
+            val (n0, s0) = s
+            if (n0 <= 0) Done()
+            else cll.next(s0) match {
+              case Done() => Done()
+              case Skip(sNext) => Skip((n0, sNext))
+              case Yield(a, sNext) => Yield(a, (n - 1, sNext))
+            }
+          },
+          (n, cll.state)
+        )
+
+      Fuser(Cons[Op, A, B, B](take, ops), state)
+    }
   }
 
 }
