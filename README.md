@@ -22,7 +22,7 @@ LazyList(0,1,2,3,4)
 ```
 
 ## Comparison
-Although the usage is similar to `SeqView` in Scala 2.13+ and the resulting optimizations are similar, the implementation itself is very different.
+Although the usage is similar to `SeqView` in Scala 2.13+ and the resulting optimizations are similar, the implementation itself is very different. SeqView is implemented imperatively, while scala-fusion is written functionally but generates an efficient imperative instruction set at compile time.
 
 ```scala
 import Fused._
