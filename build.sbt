@@ -9,6 +9,8 @@ lazy val fusion = (project in file("."))
       "-unchecked", 
       "-deprecation", 
       "-feature"),
-      
-    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.0" % "test"
+    
+    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.0" % "test",
+
+    libraryDependencies += "org.scoverage" %% "scalac-scoverage-plugin" % "1.4.0" % "provided"
   )
