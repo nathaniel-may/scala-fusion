@@ -6,7 +6,7 @@ object Fused {
 
   implicit class Fusable[A](list: LazyList[A]) {
     def startFusion: Fuser[A, A] =
-      new Fuser[A, A](Nil[Op, A](), toCoLazyList(list))
+      new Fuser[A, A](Nil[Op, A](), stream(list))
   }
 
   private[Fusion] sealed trait Step[A, S]
@@ -14,21 +14,21 @@ object Fused {
   private[Fusion] case class Skip[A, S](s: S) extends Step[A, S]
   private[Fusion] case class Yield[A, S](a: A, s: S) extends Step[A, S]
 
-  private[Fusion] sealed trait CoLazyList[A] {
+  private[Fusion] sealed trait Stream[A] {
     type S
     val next: S => Step[A, S]
     val state: S
   }
 
-  private[Fusion] def mkCoLazyList[A, S0](n: S0 => Step[A, S0], s: S0): CoLazyList[A] {type S = S0} =
-    new CoLazyList[A] {
+  private[Fusion] def mkStream[A, S0](n: S0 => Step[A, S0], s: S0): Stream[A] {type S = S0} =
+    new Stream[A] {
       type S = S0
       override val next = n
       override val state = s
     }
 
-  private[Fusion] def toCoLazyList[A](list: LazyList[A]): CoLazyList[A] =
-    mkCoLazyList[A, LazyList[A]](
+  private[Fusion] def stream[A](list: LazyList[A]): Stream[A] =
+    mkStream[A, LazyList[A]](
       {
         case LazyList() => Done()
         case x #:: xs   => Yield(x, xs)
@@ -36,7 +36,7 @@ object Fused {
       list
     )
 
-  private[Fusion] def toLazyList[A](co: CoLazyList[A]): LazyList[A] = {
+  private[Fusion] def unstream[A](co: Stream[A]): LazyList[A] = {
     def go(s: co.S, n: co.S => Step[A, co.S]): LazyList[A] = n(s) match {
       case Done()          => LazyList.empty
       case Skip(sNext)     => go(sNext, n)
@@ -46,16 +46,16 @@ object Fused {
     go(co.state, co.next)
   }
 
-  type Op[A, B] = CoLazyList[A] => CoLazyList[B]
+  type Op[A, B] = Stream[A] => Stream[B]
   implicit val opCategory: Category[Op] = new Category[Op]{
     override def id[A]: Op[A, A] = identity
     override def compose[A, B, C](f: Op[B, C], g: Op[A, B]): Op[A, C] = f compose g
   }
 
   // emulates GHC rewrite rules which are unavailable in Scalac
-  private[Fusion] case class Fuser[A, B] (ops: Thrist[Op, A, B], state: CoLazyList[A]) {
+  private[Fusion] case class Fuser[A, B] (ops: Thrist[Op, A, B], state: Stream[A]) {
     def fuse: LazyList[B] =
-      toLazyList(Thrist.compose[Op, A, B](ops)(opCategory)(state))
+      unstream(Thrist.compose[Op, A, B](ops)(opCategory)(state))
 
     private[Fusion] def prepend[C](op: Op[B, C]): Fuser[A, C] =
       new Fuser[A, C](Cons[Op, A, B, C](op, ops), state)
@@ -64,7 +64,7 @@ object Fused {
 
     def map[C](f: B => C): Fuser[A, C] = {
       val map: Op[B, C] =
-        cll => mkCoLazyList[C, cll.S](
+        cll => mkStream[C, cll.S](
           s => cll.next(s) match {
             case Done()          => Done()
             case Skip(sNext)     => Skip(sNext)
@@ -78,7 +78,7 @@ object Fused {
 
     def filter(f: B => Boolean): Fuser[A, B] = {
       val filter: Op[B, B] =
-        cll => mkCoLazyList[B, cll.S](
+        cll => mkStream[B, cll.S](
           s => cll.next(s) match {
             case Done()                   => Done()
             case Skip(sNext)              => Skip(sNext)
@@ -93,7 +93,7 @@ object Fused {
 
     def take(n: Int): Fuser[A, B] = {
       val take: Op[B, B] =
-        cll => mkCoLazyList[B, (Int, cll.S)](
+        cll => mkStream[B, (Int, cll.S)](
           s => {
             val (n0, s0) = s
             if (n0 <= 0) Done()

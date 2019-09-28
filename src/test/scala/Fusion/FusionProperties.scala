@@ -10,7 +10,7 @@ object FusionProperties extends Properties("Fusion"){
 
   property("stream and unstream compose to the identity") = forAll {
     lazyList: LazyList[Int] =>
-      lazyList == toLazyList(toCoLazyList(lazyList))
+      lazyList == unstream(stream(lazyList))
   }
 
   property("map is the same") = forAll {
