@@ -3,8 +3,8 @@ package fusion
 import org.scalacheck.{Properties, Arbitrary}
 import org.scalacheck.Prop.forAll
 import Generators.genFusion
-import Fused._
-
+import fusion.syntax._
+import Fusion._
 
 object FusionProperties extends Properties("Fusion"){
 

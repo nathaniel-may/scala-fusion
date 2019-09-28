@@ -8,7 +8,7 @@ This repository implements techniques found in "[Stream Fusion. From Lists to St
 
 ## Usage
 ```scala
-import Fused._
+import fusion.syntax._
 
 LazyList(0,1,2,3,4)
   .startFusion
@@ -25,7 +25,7 @@ LazyList(0,1,2,3,4)
 Although the usage is similar to `SeqView` in Scala 2.13+ and the resulting optimizations are similar, the implementation itself is very different. SeqView is implemented imperatively, while scala-fusion is written functionally but generates an efficient imperative instruction set at compile time.
 
 ```scala
-import Fused._
+import fusion.syntax._
 
 // no fusion
 List(0,1,2,3,4)

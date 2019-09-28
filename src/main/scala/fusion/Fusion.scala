@@ -2,12 +2,7 @@ package fusion
 
 import thrist.{Thrist, Nil, Cons, Category}
 
-object Fused {
-
-  implicit class Fusable[A](list: LazyList[A]) {
-    def startFusion: Fuser[A, A] =
-      new Fuser[A, A](Nil[Op, A](), stream(list))
-  }
+object Fusion {
 
   private[fusion] sealed trait Step[A, S]
   private[fusion] case class Done[A, S]() extends Step[A, S]
@@ -46,8 +41,8 @@ object Fused {
     go(co.state, co.next)
   }
 
-  type Op[A, B] = Stream[A] => Stream[B]
-  implicit val opCategory: Category[Op] = new Category[Op]{
+  private[fusion] type Op[A, B] = Stream[A] => Stream[B]
+  private[fusion] implicit val opCategory: Category[Op] = new Category[Op]{
     override def id[A]: Op[A, A] = identity
     override def compose[A, B, C](f: Op[B, C], g: Op[A, B]): Op[A, C] = f compose g
   }

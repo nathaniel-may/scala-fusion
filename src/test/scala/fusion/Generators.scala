@@ -1,7 +1,8 @@
 package fusion
 
 import org.scalacheck.{Arbitrary, Gen}, Gen.oneOf
-import Fused._
+import Fusion._
+import fusion.syntax._
 
 object Generators {
 
