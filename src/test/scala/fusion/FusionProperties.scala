@@ -47,20 +47,19 @@ object FusionProperties extends Properties("Fusion"){
       else fusionEffects == noFusionEffects
   }
 
-  property("an arbitrary fusion is never worse than using SeqView or native LazyList optimizations") =
-    forAll(genFusion, implicitly[Arbitrary[Int]].arbitrary) {
-      (lazyList: LazyList[Int], n: Int)  =>
-        var lazyListEffects = 0
-        var seqViewEffects = 0
-        var fusionEffects = 0
+  property("fusing take at the end is never worse than using SeqView or native LazyList optimizations") = forAll {
+    (lazyList: LazyList[Int], n: Int)  =>
+      var lazyListEffects = 0
+      var seqViewEffects = 0
+      var fusionEffects = 0
 
-        // mutations to simulate effects
-        lazyList.map(_ => lazyListEffects += 1).take(n).toList
-        lazyList.view.map(_ => seqViewEffects += 1).take(n).toList
-        lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
+      // mutations to simulate effects
+      lazyList.map(_ => lazyListEffects += 1).take(n).toList
+      lazyList.view.map(_ => seqViewEffects += 1).take(n).toList
+      lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
 
-        List(lazyListEffects, seqViewEffects)
-          .forall(fusionEffects <= _)
-    }
+      List(lazyListEffects, seqViewEffects)
+        .forall(fusionEffects <= _)
+  }
 
 }
