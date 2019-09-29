@@ -39,6 +39,12 @@ object FusionProperties extends Properties("Fusion"){
         lazyList.fuse.foldLeft("") { (s, n) => s + n.toString }
   }
 
+  property("foldRight is the same") = forAll {
+    (lazyList: LazyList[Int], n: Int) =>
+      lazyList.foldRight("") { (n, s) => s + n.toString } ==
+        lazyList.fuse.foldRight("") { (n, s) => s + n.toString }
+  }
+
   property("fusing take at the end reduces the number of computations") = forAll {
     (lazyList: LazyList[Int], n: Int)  =>
       var noFusionEffects = 0

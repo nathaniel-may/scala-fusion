@@ -126,6 +126,21 @@ object Fusion {
       foldLeft(toStream)
     }
 
+    def foldRight[B](z: B)(f: (A, B) => B): B = {
+      val foldRight: Stream[A] => B =
+        stream => {
+          def go(s: stream.S): B = stream.next(s) match {
+            case Done()          => z
+            case Skip(sNext)     => go(sNext)
+            case Yield(a, sNext) => f(a, go(sNext))
+          }
+
+          go(stream.state)
+        }
+
+      foldRight(toStream)
+    }
+
   }
 
 }
