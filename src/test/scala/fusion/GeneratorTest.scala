@@ -2,9 +2,9 @@ package fusion
 
 import org.scalatest._
 import org.scalacheck.Gen
-import scala.math.abs
 import Generators.genFusion
-import fusion.syntax._
+import cats.instances.all._
+import cats.Traverse.ops._
 
 class GeneratorTest extends FlatSpec with Matchers {
 
@@ -12,8 +12,8 @@ class GeneratorTest extends FlatSpec with Matchers {
     val size      = 1
     val samples   = 200
     val input: LazyList[LazyList[Int]] =
-      sequence(LazyList.fill(samples)(Gen.resize(size, genFusion).sample))
-        .to(LazyList).flatten
+      LazyList.fill(samples)(Gen.resize(size, genFusion).sample)
+        .sequence.to(LazyList).flatten
 
     val map = input.foldLeft[Map[List[Int], Int]](Map()) {
         (m, ll) =>
@@ -26,13 +26,6 @@ class GeneratorTest extends FlatSpec with Matchers {
 
     withClue(s"Out of $samples samples, the most common fusion occurred $mostCommon times, all other fusions occured $allButMostCommon times") {
       allButMostCommon > 0 shouldBe true }
-  }
-
-  // TODO get cats sequence to work with LazyList
-  def sequence[A]: LazyList[Option[A]] => Option[LazyList[A]] = {
-    case LazyList()       => Option(LazyList())
-    case None    #:: tail => None
-    case Some(x) #:: tail => sequence(tail).map { x #:: _}
   }
 
 }
