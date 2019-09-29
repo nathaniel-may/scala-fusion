@@ -1,6 +1,8 @@
 package fusion
 
-import thrist.{Thrist, Nil, Cons, Category}
+import thrist.{Category, Cons, Nil, Thrist}
+
+import scala.annotation.tailrec
 
 object Fusion {
 
@@ -49,8 +51,11 @@ object Fusion {
 
   // emulates GHC rewrite rules which are unavailable in Scalac
   private[fusion] case class Fuser[X, A](ops: Thrist[Op, X, A], state: Stream[X]) {
+    private[Fuser] def toStream =
+      Thrist.compose[Op, X, A](ops)(opCategory)(state)
+
     def toLazyList: LazyList[A] =
-      unstream(Thrist.compose[Op, X, A](ops)(opCategory)(state))
+      unstream(toStream)
 
     def toList: List[A] =
       toLazyList.toList
@@ -104,6 +109,23 @@ object Fusion {
 
       Fuser(Cons[Op, X, A, A](take, ops), state)
     }
+
+    def foldLeft[B](z: B)(f: (B, A) => B): B = {
+      val foldLeft: Stream[A] => B =
+        stream => {
+          @tailrec
+          def go(z: B, s0: stream.S): B = stream.next(s0) match {
+            case Done()          => z
+            case Skip(sNext)     => go(z, sNext)
+            case Yield(a, sNext) => go(f(z, a), sNext)
+          }
+
+          go(z, stream.state)
+        }
+
+      foldLeft(toStream)
+    }
+
   }
 
 }
