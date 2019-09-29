@@ -49,8 +49,14 @@ object Fusion {
 
   // emulates GHC rewrite rules which are unavailable in Scalac
   private[fusion] case class Fuser[A, B](ops: Thrist[Op, A, B], state: Stream[A]) {
-    def fuse: LazyList[B] =
+    def toLazyList: LazyList[B] =
       unstream(Thrist.compose[Op, A, B](ops)(opCategory)(state))
+
+    def toList: List[B] =
+      toLazyList.toList
+
+    def toVector: Vector[B] =
+      toLazyList.toVector
 
     def map[C](f: B => C): Fuser[A, C] = {
       val map: Op[B, C] =

@@ -5,13 +5,12 @@ import Fusion._
 import fusion.syntax._
 
 object Generators {
-
-  // TODO only generating empty LazyLists
+  
   def genFusion(implicit ev: Arbitrary[LazyList[Int]]): Gen[LazyList[Int]] =
     Gen.sized { size =>
       Gen.resize(size, ev.arbitrary).flatMap { ll =>
-        addMethodCalls(size, ll.startFusion)(implicitly[Arbitrary[Int]])
-      }.map(_.fuse)
+        addMethodCalls(size, ll.fuse)(implicitly[Arbitrary[Int]])
+      }.map(_.toLazyList)
     }
 
   def addMethodCalls(n: Int, fuser: Fuser[Int, Int])(ev: Arbitrary[Int]): Gen[Fuser[Int, Int]] =

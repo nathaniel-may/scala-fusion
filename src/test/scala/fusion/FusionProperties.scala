@@ -15,22 +15,22 @@ object FusionProperties extends Properties("Fusion"){
 
   property("map is the same") = forAll {
     lazyList: LazyList[Int] =>
-      lazyList.map(_ + 1) == lazyList.startFusion.map(_ + 1).fuse
+      lazyList.map(_ + 1) == lazyList.fuse.map(_ + 1).toLazyList
   }
 
   property("filter is the same") = forAll {
     lazyList: LazyList[Int] =>
-      lazyList.filter(_ > 0) == lazyList.startFusion.filter(_ > 0).fuse
+      lazyList.filter(_ > 0) == lazyList.fuse.filter(_ > 0).toLazyList
   }
 
   property("filter then map is the same") = forAll {
     lazyList: LazyList[Int] =>
-      lazyList.filter(_ > 0).map(_.toString) == lazyList.startFusion.filter(_ > 0).map(_.toString).fuse
+      lazyList.filter(_ > 0).map(_.toString) == lazyList.fuse.filter(_ > 0).map(_.toString).toLazyList
   }
 
   property("take is the same") = forAll {
     (lazyList: LazyList[Int], n: Int) =>
-      lazyList.take(n) == lazyList.startFusion.take(n).fuse
+      lazyList.take(n) == lazyList.fuse.take(n).toLazyList
   }
 
   property("fusing take at the end reduces the number of computations") = forAll {
@@ -41,7 +41,7 @@ object FusionProperties extends Properties("Fusion"){
       // mutations to simulate effects
       // comparing with list effects because lazylist has its own optimizations
       lazyList.toList.map(_ => noFusionEffects += 1).take(n)
-      lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
+      lazyList.fuse.map(_ => fusionEffects += 1).take(n).toList
 
       if(lazyList.drop(n).nonEmpty) fusionEffects < noFusionEffects
       else fusionEffects == noFusionEffects
@@ -56,7 +56,7 @@ object FusionProperties extends Properties("Fusion"){
       // mutations to simulate effects
       lazyList.map(_ => lazyListEffects += 1).take(n).toList
       lazyList.view.map(_ => seqViewEffects += 1).take(n).toList
-      lazyList.startFusion.map(_ => fusionEffects += 1).take(n).fuse.toList
+      lazyList.fuse.map(_ => fusionEffects += 1).take(n).toList
 
       List(lazyListEffects, seqViewEffects)
         .forall(fusionEffects <= _)

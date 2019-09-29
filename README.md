@@ -11,11 +11,11 @@ This repository implements techniques found in "[Stream Fusion. From Lists to St
 import fusion.syntax._
 
 LazyList(0,1,2,3,4)
-  .startFusion
+  .fuse
   .map { _ + 1 }
   .filter { _ <= 2 }
   .take(1)
-  .fuse
+  .toLazyList
 
 // output:  LazyList(1)
 // runtime: LazyList(0,1,2,3,4) -> Stream(<instruction set>) -> LazyList(1)
@@ -48,11 +48,11 @@ List(0,1,2,3,4)
 
 // scala-fusion (this library)
 LazyList(0,1,2,3,4)
-  .startFusion
+  .fuse
   .map { _ + 1 }
   .filter { _ <= 2 }
   .take(1)
-  .fuse
+  .toLazyList
 
 // output:  LazyList(1)
 // runtime: LazyList(0,1,2,3,4) -> Stream(<instruction set>) -> LazyList(1)
