@@ -48,19 +48,19 @@ object Fusion {
   }
 
   // emulates GHC rewrite rules which are unavailable in Scalac
-  private[fusion] case class Fuser[A, B](ops: Thrist[Op, A, B], state: Stream[A]) {
-    def toLazyList: LazyList[B] =
-      unstream(Thrist.compose[Op, A, B](ops)(opCategory)(state))
+  private[fusion] case class Fuser[X, A](ops: Thrist[Op, X, A], state: Stream[X]) {
+    def toLazyList: LazyList[A] =
+      unstream(Thrist.compose[Op, X, A](ops)(opCategory)(state))
 
-    def toList: List[B] =
+    def toList: List[A] =
       toLazyList.toList
 
-    def toVector: Vector[B] =
+    def toVector: Vector[A] =
       toLazyList.toVector
 
-    def map[C](f: B => C): Fuser[A, C] = {
-      val map: Op[B, C] =
-        cll => mkStream[C, cll.S](
+    def map[B](f: A => B): Fuser[X, B] = {
+      val map: Op[A, B] =
+        cll => mkStream[B, cll.S](
           s => cll.next(s) match {
             case Done()          => Done()
             case Skip(sNext)     => Skip(sNext)
@@ -69,12 +69,12 @@ object Fusion {
           cll.state
         )
 
-      Fuser(Cons[Op, A, B, C](map, ops), state)
+      Fuser(Cons[Op, X, A, B](map, ops), state)
     }
 
-    def filter(f: B => Boolean): Fuser[A, B] = {
-      val filter: Op[B, B] =
-        cll => mkStream[B, cll.S](
+    def filter(f: A => Boolean): Fuser[X, A] = {
+      val filter: Op[A, A] =
+        cll => mkStream[A, cll.S](
           s => cll.next(s) match {
             case Done()                   => Done()
             case Skip(sNext)              => Skip(sNext)
@@ -84,12 +84,12 @@ object Fusion {
           cll.state
         )
 
-      Fuser(Cons[Op, A, B, B](filter, ops), state)
+      Fuser(Cons[Op, X, A, A](filter, ops), state)
     }
 
-    def take(n: Int): Fuser[A, B] = {
-      val take: Op[B, B] =
-        cll => mkStream[B, (Int, cll.S)](
+    def take(n: Int): Fuser[X, A] = {
+      val take: Op[A, A] =
+        cll => mkStream[A, (Int, cll.S)](
           s => {
             val (n0, s0) = s
             if (n0 <= 0) Done()
@@ -102,7 +102,7 @@ object Fusion {
           (n, cll.state)
         )
 
-      Fuser(Cons[Op, A, B, B](take, ops), state)
+      Fuser(Cons[Op, X, A, A](take, ops), state)
     }
   }
 
