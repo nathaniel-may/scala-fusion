@@ -6,6 +6,6 @@ package object syntax {
 
   implicit class Fusable[A](list: LazyList[A]) {
     def fuse: Fuser[A, A] =
-      new Fuser[A, A](Nil[Op, A](), stream(list))
+      new Fuser[A, A](Nil[Op, A, A](implicitly[A =:= A]), stream(list))
   }
 }

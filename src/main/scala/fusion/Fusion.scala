@@ -1,6 +1,6 @@
 package fusion
 
-import thrist.{Category, Cons, Nil, Thrist}
+import thrist.{Category, Cons, Thrist}
 
 import scala.annotation.tailrec
 
@@ -140,7 +140,6 @@ object Fusion {
 
       foldRight(toStream)
     }
-
   }
 
 }
