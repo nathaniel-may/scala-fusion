@@ -3,6 +3,8 @@ package fusion
 import thrist.{Category, Cons, Thrist}
 
 import scala.annotation.tailrec
+import scala.{Stream => _}
+import scala.collection.{SeqFactory => _}
 
 /** Container for fusion types and instances */
 object Fusion {
@@ -162,6 +164,30 @@ object Fusion {
         }
 
       foldRight(toStream)
+    }
+
+    def flatMap[B](f: A => LazyList[B]) =
+      flatMap0(a => stream(f(a)))
+
+    private[fusion] def flatMap0[B](f: A => Stream[B]) = {
+      val flatMap: Op[A, B] =
+        cll => mkStream[B, (cll.S, Option[Stream[B]])](
+          {
+            case (sa, None) => cll.next(sa) match {
+              case Done()          => Done()
+              case Skip(sNext)     => Skip((sNext, None))
+              case Yield(a, sNext) => Skip((sNext, Some(f(a))))
+            }
+            case (sa, Some(bs)) => bs.next(bs.state) match {
+              case Done()          => Skip((sa, None))
+              case Skip(sNext)     => Skip((sa, Some(mkStream(bs.next, sNext))))
+              case Yield(b, sNext) => Yield(b, (sa, Some(mkStream(bs.next, sNext))))
+            }
+          },
+          (cll.state, None)
+        )
+
+      Fuser(Cons[Op, X, A, B](flatMap, ops), state)
     }
 
   }
