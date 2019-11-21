@@ -15,10 +15,10 @@ LazyList(0,1,2,3,4)
   .map { _ + 1 }
   .filter { _ <= 2 }
   .take(1)
-  .toLazyList
+  .toList
 
-// output:  LazyList(1)
-// runtime: LazyList(0,1,2,3,4) -> Stream(<instruction set>) -> LazyList(1)
+// output:  List(1)
+// runtime: LazyList(<not computed>) -> Stream(<instruction set>, LazyList(<not computed>)) -> List(1)
 ```
 
 ## Comparison
@@ -53,8 +53,8 @@ LazyList(0,1,2,3,4)
   .map { _ + 1 }
   .filter { _ <= 2 }
   .take(1)
-  .toLazyList
+  .toList
 
-// output:  LazyList(1)
-// runtime: LazyList(0,1,2,3,4) -> Stream(<instruction set>) -> LazyList(1)
+// output:  List(1)
+// runtime: LazyList(<not computed>) -> Stream(<instruction set>, LazyList(<not computed>)) -> List(1)
 ```
