@@ -58,3 +58,6 @@ LazyList(0,1,2,3,4)
 // output:  List(1)
 // runtime: LazyList(<not computed>) -> Stream(<instruction set>, LazyList(<not computed>)) -> List(1)
 ```
+
+## Implementation
+The original version relies on GHC rewrite rules to reduce `stream compose unstream` to the identity on streams. Since this is unavailable in scalac, The `Fuser` type was introduced which wraps the underlying stream and contains an instance of a type-threaded list which stores the sequence of procedures. Composing this type-threaded list results in a single set of fused instructions to run on the original input Stream. This implementation adds a very small amount of overhead proportional to the number of operations called on the stream.
