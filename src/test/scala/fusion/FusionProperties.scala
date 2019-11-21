@@ -55,9 +55,26 @@ object FusionProperties extends Properties("Fusion"){
         lazyList.fuse.foldRight("") { (n, s) => s + n.toString }
   }
 
+  property("take then foldLeft is the same") = forAll {
+    (lazyList: LazyList[Int], n: Int) =>
+      lazyList.take(n).foldLeft("") { (s, n) => s + n.toString } ==
+        lazyList.fuse.take(n).foldLeft("") { (s, n) => s + n.toString }
+  }
+
+  property("take then foldRight is the same") = forAll {
+    (lazyList: LazyList[Int], n: Int) =>
+      lazyList.take(n).foldRight("") { (n, s) => s + n.toString } ==
+        lazyList.fuse.take(n).foldRight("") { (n, s) => s + n.toString }
+  }
+
   property("flatMap is the same") = forAll {
     lazyList: LazyList[Int] =>
       lazyList.flatMap { x => LazyList(x, x) } == lazyList.fuse.flatMap { x => LazyList(x, x) }.toLazyList
+  }
+
+  property("take then flatMap is the same") = forAll {
+    (lazyList: LazyList[Int], n: Int) =>
+      lazyList.take(n).flatMap { x => LazyList(x, x) } == lazyList.fuse.take(n).flatMap { x => LazyList(x, x) }.toLazyList
   }
 
   property("fusing take at the end reduces the number of computations") = forAll {
