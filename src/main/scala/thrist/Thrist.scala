@@ -1,12 +1,17 @@
 package thrist
 
 import thrist.Thrist.{FoldLeftFn, FoldRightFn}
-
 import scala.annotation.tailrec
 import scala.language.{existentials, implicitConversions}
 
+
 case class Nil[Arr[_, _], A, B](ev: A =:= B) extends Thrist[Arr, A, B]
 case class Cons[Arr[_, _], A, B, C](head: Arr[A, B], tail: Thrist[Arr, B, C]) extends Thrist[Arr, A, C]
+
+/** Thrist is a "type-threaded list"
+ * based on the haskell package `Thrist`:
+ * http://hackage.haskell.org/package/thrist
+ */
 sealed trait Thrist[Arr[_, _], A, B] {
   final def foldRight[Brr[_,_], X](z: Brr[X, A])(f: FoldRightFn[Arr, Brr, B]): Brr[X, B] = {
     type Brr0[Z] = Brr[X, Z]
@@ -28,6 +33,9 @@ sealed trait Thrist[Arr[_, _], A, B] {
   }
 }
 
+/** Custom Category typeclass instead of depending on cats or scalaz
+  * @tparam Hom - Homomorphism over two types
+  */
 trait Category[Hom[_, _]] {
   def id[A]: Hom[A, A]
   def compose[A, B, C](f: Hom[B, C], g: Hom[A, B]): Hom[A, C]
