@@ -28,9 +28,19 @@ object FusionProperties extends Properties("Fusion"){
       lazyList.filter(_ > 0).map(_.toString) == lazyList.fuse.filter(_ > 0).map(_.toString).toLazyList
   }
 
+  property("filter then filter is the same") = forAll {
+    lazyList: LazyList[Int] =>
+      lazyList.filter(_ > 0).filter(_ < 100) == lazyList.fuse.filter(_ > 0).filter(_ < 100).toLazyList
+  }
+
   property("take is the same") = forAll {
     (lazyList: LazyList[Int], n: Int) =>
       lazyList.take(n) == lazyList.fuse.take(n).toLazyList
+  }
+
+  property("take ten take is the same") = forAll {
+    (lazyList: LazyList[Int], n: Int, n2: Int) =>
+      lazyList.take(n).take(n2) == lazyList.fuse.take(n).take(n2).toLazyList
   }
 
   property("foldLeft is the same") = forAll {

@@ -18,10 +18,11 @@ object Generators {
     else addMethodCall(fuser)(ev).flatMap { fNext => addMethodCalls(n-1, fNext)(ev) }
 
   private def addMethodCall(fuser: Fuser[Int, Int])(ev: Arbitrary[Int]): Gen[Fuser[Int, Int]] =
-    oneOf(1 to 3).flatMap {
+    oneOf(1 to 4).flatMap {
       case 1 => ev.arbitrary.map { n => fuser.map(_ + n) }
       case 2 => ev.arbitrary.map { n => fuser.filter(_ < n) }
       case 3 => ev.arbitrary.map { n => fuser.take(n) }
+      case 4 => ev.arbitrary.map { _ => fuser.flatMap { x => LazyList(x, x) } }
     }
 
 }
