@@ -2,11 +2,17 @@ package thrist
 
 import scala.language.{implicitConversions, existentials}
 
-//Polymorphic Thrist
+/** Thrist is a "type-threaded list"
+  * based on the haskell package `Thrist`:
+  * http://hackage.haskell.org/package/thrist
+  */
 sealed trait Thrist[Arr[_, _], A, B]
 case class Nil[Arr[_, _], A]() extends Thrist[Arr, A, A]
 case class Cons[Arr[_, _], A, B, C](head: Arr[B, C], tail: Thrist[Arr, A, B]) extends Thrist[Arr, A, C]
 
+/** Custom Category typeclass instead of depending on cats or scalaz
+  * @tparam Hom - Homomorphism over two types
+  */
 trait Category[Hom[_, _]] {
   def id[A]: Hom[A, A]
   def compose[A, B, C](f: Hom[B, C], g: Hom[A, B]): Hom[A, C]
