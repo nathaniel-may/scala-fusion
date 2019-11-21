@@ -41,6 +41,7 @@ List(0,1,2,3,4)
   .view
   .map { _ + 1 }
   .filter { _ <= 2 }
+  .take(1)
   .toList
 
 // output:  List(1)
